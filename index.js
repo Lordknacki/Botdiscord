@@ -29,33 +29,35 @@ client.on('messageCreate', (message) => {
 
     // Commande pour planifier une tâche
     if (command === '!planifier') {
-        const dateInput = args.shift(); // Récupère la date (ex : "28/01/2025 15:00")
-        const taskDescription = args.join(' '); // Reste du message = tâche
+    const dateInput = args.shift(); // Récupère la date et l'heure
+    const taskDescription = args.join(' '); // Le reste du message = description
 
-        if (!dateInput || !taskDescription) {
-            return message.channel.send(
-                '❌ Usage : `!planifier jj/mm/aaaa hh:mm Tâche à accomplir`'
-            );
-        }
-
-        const taskTime = moment(dateInput, 'DD/MM/YYYY HH:mm');
-        if (!taskTime.isValid()) {
-            return message.channel.send('❌ Format de date/heure invalide. Exemple : `28/01/2025 15:00`');
-        }
-
-        // Ajouter la tâche
-        tasks.push({
-            time: taskTime,
-            description: taskDescription,
-            channelId: message.channel.id,
-        });
-
-        message.channel.send(
-            `✅ Tâche planifiée : **${taskDescription}** pour le **${taskTime.format(
-                'dddd DD MMMM YYYY à HH:mm'
-            )}**. Un rappel sera envoyé 1h avant !`
+    if (!dateInput || !taskDescription) {
+        return message.channel.send(
+            '❌ Usage : `!planifier jj/mm/aaaa hh:mm Tâche à accomplir`'
         );
     }
+
+    // Utiliser moment en mode strict pour analyser la date
+    const taskTime = moment(dateInput, 'DD/MM/YYYY HH:mm', true); // Le 3ème argument "true" active le mode strict
+    if (!taskTime.isValid()) {
+        return message.channel.send('❌ Format de date/heure invalide. Exemple : `28/01/2025 15:00`');
+    }
+
+    // Ajouter la tâche
+    tasks.push({
+        time: taskTime,
+        description: taskDescription,
+        channelId: message.channel.id,
+    });
+
+    message.channel.send(
+        `✅ Tâche planifiée : **${taskDescription}** pour le **${taskTime.format(
+            'dddd DD MMMM YYYY à HH:mm'
+        )}**. Un rappel sera envoyé 1h avant !`
+    );
+}
+
 
     // Commande pour voir les tâches
     if (command === '!voir') {
