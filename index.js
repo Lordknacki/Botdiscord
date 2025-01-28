@@ -119,21 +119,23 @@ client.on('interactionCreate', async (interaction) => {
 
 // Vérifier les tâches toutes les minutes
 setInterval(() => {
-    const now = moment();
+    const now = moment(); // Heure actuelle
 
     tasks.forEach((task, index) => {
-        const timeDiff = task.time.diff(now, 'minutes');
+        const timeDiff = task.time.diff(now, 'minutes'); // Différence en minutes
 
         if (timeDiff === 60) {
+            // Envoyer un rappel 1h avant
             const channel = client.channels.cache.get(task.channelId);
             if (channel) {
                 channel.send(`🔔 @everyone Rappel : **${task.description}** dans 1h !`);
             }
         } else if (timeDiff <= 0) {
-            tasks.splice(index, 1); // Supprime la tâche
+            // Supprimer la tâche une fois dépassée
+            tasks.splice(index, 1); // Retirer la tâche de la liste
         }
     });
-}, 60000);
+}, 60000); // Vérifie toutes les 60 secondes
 
 // Connecter le bot
 client.login(process.env.TOKEN);
