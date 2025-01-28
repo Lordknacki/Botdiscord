@@ -1,6 +1,9 @@
-const { Client, GatewayIntentBits, REST, Routes } = require('discord.js');
-const moment = require('moment'); // Pour gérer les dates
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder } = require('discord.js');
+const moment = require('moment');
+require('moment/locale/fr'); // Activer le français pour les dates
 require('dotenv').config();
+
+moment.locale('fr'); // Appliquer le format français
 
 const client = new Client({
     intents: [GatewayIntentBits.Guilds],
@@ -8,33 +11,29 @@ const client = new Client({
 
 const tasks = []; // Liste des tâches planifiées
 
-// Définir les commandes slash
+// Définitions des commandes slash
 const commands = [
-    {
-        name: 'planifier',
-        description: 'Planifie une tâche avec un rappel 1h avant.',
-        options: [
-            {
-                name: 'date',
-                type: 3, // Type STRING
-                description: 'Date et heure (yyyy-mm-dd hh:mm)',
-                required: true,
-            },
-            {
-                name: 'tache',
-                type: 3, // Type STRING
-                description: 'Description de la tâche',
-                required: true,
-            },
-        ],
-    },
-    {
-        name: 'voir',
-        description: 'Affiche toutes les tâches planifiées.',
-    },
+    new SlashCommandBuilder()
+        .setName('planifier')
+        .setDescription('Planifier une tâche avec un rappel 1h avant.')
+        .addStringOption((option) =>
+            option
+                .setName('date')
+                .setDescription("La date et l'heure au format : jj/mm/aaaa hh:mm")
+                .setRequired(true)
+        )
+        .addStringOption((option) =>
+            option
+                .setName('tache')
+                .setDescription("La tâche à accomplir")
+                .setRequired(true)
+        ),
+    new SlashCommandBuilder()
+        .setName('voir')
+        .setDescription('Voir toutes les tâches planifiées.'),
 ];
 
-// Enregistrer les commandes slash
+// Enregistrer les commandes sur Discord
 const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
 
 (async () => {
@@ -42,7 +41,7 @@ const rest = new REST({ version: '10' }).setToken(process.env.TOKEN);
         console.log('🔄 Enregistrement des commandes slash...');
         await rest.put(
             Routes.applicationCommands(process.env.CLIENT_ID),
-            { body: commands }
+            { body: commands.map((command) => command.toJSON()) }
         );
         console.log('✅ Commandes slash enregistrées.');
     } catch (error) {
@@ -55,21 +54,26 @@ client.once('ready', () => {
     console.log(`✅ Bot connecté en tant que ${client.user.tag}`);
 });
 
-// Gérer les commandes slash
+// Gestion des commandes slash
 client.on('interactionCreate', async (interaction) => {
     if (!interaction.isCommand()) return;
 
     const { commandName, options } = interaction;
 
     if (commandName === 'planifier') {
-        const time = options.getString('date');
+        const dateString = options.getString('date');
         const taskDescription = options.getString('tache');
 
-        const taskTime = moment(time, 'YYYY-MM-DD HH:mm');
+        // Convertir la date en moment
+        const taskTime = moment(dateString, 'DD/MM/YYYY HH:mm');
         if (!taskTime.isValid()) {
-            return interaction.reply('❌ Format de date/heure invalide. Exemple : `2025-01-28 15:00`');
+            return interaction.reply({
+                content: '❌ La date est invalide. Utilise le format : `jj/mm/aaaa hh:mm`',
+                ephemeral: true, // Message visible uniquement par l'utilisateur
+            });
         }
 
+        // Ajouter la tâche
         tasks.push({
             time: taskTime,
             description: taskDescription,
@@ -78,7 +82,7 @@ client.on('interactionCreate', async (interaction) => {
 
         await interaction.reply(
             `✅ Tâche planifiée : **${taskDescription}** pour le **${taskTime.format(
-                'DD/MM/YYYY à HH:mm'
+                'dddd DD MMMM YYYY à HH:mm'
             )}**. Un rappel sera envoyé 1h avant !`
         );
     }
@@ -91,7 +95,7 @@ client.on('interactionCreate', async (interaction) => {
         const taskList = tasks
             .map(
                 (task, index) =>
-                    `${index + 1}. **${task.description}** - ${task.time.format('DD/MM/YYYY à HH:mm')}`
+                    `${index + 1}. **${task.description}** - ${task.time.format('dddd DD MMMM YYYY à HH:mm')}`
             )
             .join('\n');
 
@@ -117,7 +121,7 @@ setInterval(() => {
             tasks.splice(index, 1);
         }
     });
-}, 60000); // Vérifie toutes les 60 secondes
+}, 60000);
 
 // Connecter le bot
 client.login(process.env.TOKEN);
