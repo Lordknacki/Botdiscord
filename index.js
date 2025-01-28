@@ -87,7 +87,7 @@ client.on('messageCreate', async (message) => {
             channelId: message.channel.id,
         });
 
-        saveTasks(); // Sauvegarder les tâches
+        saveTasks(); // Sauvegarder les tâches après ajout
 
         return message.channel.send(
             `✅ Tâche planifiée : **${taskDescription}** pour le **${taskTime.format(
