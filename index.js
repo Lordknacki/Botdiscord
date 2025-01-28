@@ -6,45 +6,56 @@ require('dotenv').config(); // Charger les variables d'environnement
 
 moment.locale('fr'); // Configurer Moment en français
 
+// Configuration du bot
 const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
-        GatewayIntentBits.MessageReactions,
     ],
 });
 
+// Variables globales
 const TASKS_FILE = './tasks.json';
 const ROLE_ID_MONEY = '987654321012345678'; // Remplace par l'ID de ton rôle "Money"
 let tasks = [];
 
-// Charger les tâches depuis le fichier JSON
+// Fonction pour charger les tâches depuis le fichier JSON
 const loadTasks = () => {
-    if (fs.existsSync(TASKS_FILE)) {
-        const data = fs.readFileSync(TASKS_FILE, 'utf8');
-        tasks = JSON.parse(data).map(task => ({
-            ...task,
-            time: moment(task.time), // Convertir les dates en objets Moment
-        }));
-        console.log('✅ Tâches chargées depuis le fichier.');
+    try {
+        if (fs.existsSync(TASKS_FILE)) {
+            const data = fs.readFileSync(TASKS_FILE, 'utf8');
+            tasks = JSON.parse(data).map(task => ({
+                ...task,
+                time: moment(task.time), // Convertir les dates en objets Moment
+            }));
+            console.log('✅ Tâches chargées depuis le fichier.');
+        } else {
+            console.log('📂 Aucun fichier tasks.json trouvé. Un nouveau sera créé.');
+        }
+    } catch (error) {
+        console.error('❌ Erreur lors du chargement des tâches :', error);
     }
 };
 
-// Sauvegarder les tâches dans le fichier JSON
+// Fonction pour sauvegarder les tâches dans le fichier JSON
 const saveTasks = () => {
-    fs.writeFileSync(
-        TASKS_FILE,
-        JSON.stringify(
-            tasks.map(task => ({
-                ...task,
-                time: task.time.toISOString(), // Convertir les dates Moment en chaînes
-            })),
-            null,
-            2
-        )
-    );
-    console.log('✅ Tâches sauvegardées dans le fichier.');
+    try {
+        fs.writeFileSync(
+            TASKS_FILE,
+            JSON.stringify(
+                tasks.map(task => ({
+                    ...task,
+                    time: task.time.toISOString(), // Convertir les dates Moment en chaînes
+                })),
+                null,
+                2
+            )
+        );
+        console.log('✅ Tâches sauvegardées dans le fichier.');
+    } catch (error) {
+        console.error('❌ Erreur lors de la sauvegarde des tâches :', error);
+    }
 };
 
 // Charger les tâches au démarrage
