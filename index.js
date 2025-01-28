@@ -1,4 +1,4 @@
-const { Client, GatewayIntentBits } = require('discord.js');
+const { Client, GatewayIntentBits, ActionRowBuilder, ButtonBuilder, ButtonStyle } = require('discord.js');
 const fs = require('fs'); // Module pour lire/écrire des fichiers
 const moment = require('moment'); // Gestion des dates
 require('moment/locale/fr'); // Importer la locale française pour les dates
@@ -11,11 +11,12 @@ const client = new Client({
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
         GatewayIntentBits.MessageContent,
+        GatewayIntentBits.MessageReactions,
     ],
 });
 
 const TASKS_FILE = './tasks.json';
-const ROLE_ID_MONEY = '987654321012345678'; // Remplace par l'ID du rôle "Money"
+const ROLE_ID_MONEY = '987654321012345678'; // Remplace par l'ID de ton rôle "Money"
 let tasks = [];
 
 // Charger les tâches depuis le fichier JSON
@@ -80,6 +81,7 @@ client.on('messageCreate', async (message) => {
 
         // Ajouter la tâche si valide
         tasks.push({
+            id: Date.now(), // Identifiant unique pour la tâche
             time: taskTime,
             description: taskDescription,
             channelId: message.channel.id,
@@ -94,33 +96,49 @@ client.on('messageCreate', async (message) => {
         );
     }
 
-    // Commande pour voir les tâches planifiées
+    // Commande pour voir les tâches planifiées avec des boutons
     if (command === '!voir') {
         if (tasks.length === 0) {
             return message.channel.send('📋 Aucune tâche planifiée.');
         }
 
-        const taskList = tasks
-            .map(
-                (task, index) =>
-                    `${index + 1}. **${task.description}** - ${task.time.format('dddd DD MMMM YYYY à HH:mm')}`
-            )
-            .join('\n');
+        for (const [index, task] of tasks.entries()) {
+            const row = new ActionRowBuilder().addComponents(
+                new ButtonBuilder()
+                    .setCustomId(`cancel_${task.id}`)
+                    .setLabel('Annuler cette tâche')
+                    .setStyle(ButtonStyle.Danger)
+            );
 
-        return message.channel.send(`📋 Liste des tâches planifiées :\n${taskList}`);
+            await message.channel.send({
+                content: `${index + 1}. **${task.description}** - ${task.time.format(
+                    'dddd DD MMMM YYYY à HH:mm'
+                )}`,
+                components: [row],
+            });
+        }
     }
+});
 
-    // Commande pour annuler une tâche
-    if (command === '!annuler') {
-        const taskNumber = parseInt(args[0], 10); // Numéro de la tâche
+// Gérer les interactions avec les boutons
+client.on('interactionCreate', async (interaction) => {
+    if (!interaction.isButton()) return;
 
-        if (isNaN(taskNumber) || taskNumber < 1 || taskNumber > tasks.length) {
-            return message.channel.send('❌ Indique le numéro de la tâche à annuler. Usage : `!annuler [numéro]`');
+    const [action, taskId] = interaction.customId.split('_');
+
+    if (action === 'cancel') {
+        const taskIndex = tasks.findIndex(task => task.id.toString() === taskId);
+        if (taskIndex === -1) {
+            return interaction.reply({
+                content: '❌ Tâche introuvable ou déjà supprimée.',
+                ephemeral: true, // Message visible uniquement par l'utilisateur
+            });
         }
 
-        const removedTask = tasks.splice(taskNumber - 1, 1); // Supprime la tâche
+        const removedTask = tasks.splice(taskIndex, 1); // Supprimer la tâche
         saveTasks(); // Sauvegarder les tâches après suppression
-        return message.channel.send(`🗑️ Tâche **${removedTask[0].description}** annulée.`);
+
+        return interaction.reply(`🗑️ Tâche **${removedTask[0].description}** annulée.`);
     }
 });
 
